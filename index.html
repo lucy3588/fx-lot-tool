@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>FXロット計算ツール</title>
+  <title>FXロット計算ツール OANDA MT5版</title>
   <meta name="theme-color" content="#0b1f4d">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -11,7 +11,7 @@
   <style>
     :root{
       --bg:#f4f7fb; --card:#fff; --ink:#101828; --sub:#667085; --line:#d0d5dd;
-      --blue:#1849a9; --red:#c62828; --green:#157347; --navy:#0b1f4d;
+      --blue:#1849a9; --red:#c62828; --green:#157347; --navy:#0b1f4d; --soft:#eef4ff;
     }
     *{box-sizing:border-box}
     body{
@@ -40,19 +40,21 @@
       font-size:18px; background:#fff; color:var(--ink)
     }
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
     .seg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
     .seg button{
       border:none;border-radius:14px;padding:14px 10px;font-size:17px;font-weight:800;
-      background:#eef3ff;color:var(--blue)
+      background:#eef3ff;color:var(--blue);cursor:pointer
     }
     .seg button.active{background:var(--blue);color:#fff}
     .quick{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
-    .quick button{
-      border:1px solid #e6ebf2;background:#f8fafc;border-radius:12px;padding:10px;font-weight:700
+    .quick button,.quick2 button{
+      border:1px solid #e6ebf2;background:#f8fafc;border-radius:12px;padding:10px;font-weight:700;cursor:pointer
     }
+    .quick2{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
     .btn{
       width:100%; margin-top:14px; padding:16px; border:none; border-radius:16px;
-      background:var(--blue); color:#fff; font-size:18px; font-weight:800
+      background:var(--blue); color:#fff; font-size:18px; font-weight:800; cursor:pointer
     }
     .result{
       background:linear-gradient(180deg,#f8fbff,#eef4ff); border:1px solid #dbe6ff; border-radius:18px; padding:16px
@@ -65,25 +67,34 @@
     th{background:#edf3ff;color:var(--blue);font-weight:900}
     tr:nth-child(even) td{background:#fbfdff}
     .ok{color:var(--green)}
+    .pill{
+      display:inline-block;background:#eef3ff;color:var(--blue);padding:5px 8px;
+      border-radius:999px;font-size:12px;font-weight:700
+    }
+    .hidden{display:none}
     .note{font-size:12px;color:#667085;line-height:1.7;margin-top:10px}
-    @media (max-width:560px){ .grid2,.quick{grid-template-columns:1fr 1fr} .main{font-size:27px} }
+    @media (max-width:640px){
+      .grid2,.grid3,.quick,.quick2{grid-template-columns:1fr 1fr}
+      .main{font-size:27px}
+    }
   </style>
 </head>
 <body>
 <div class="wrap">
   <div class="hero">
     <h1>FXロット計算ツール</h1>
-    <div class="sub">EURUSD / USDJPY・2分割50%+50%・複利対応</div>
+    <div class="sub">OANDA MT5対応 / 1lot=10万通貨 / 見やすいデザイン維持版</div>
     <div class="badges">
-      <div class="badge">初期資金 50万円</div>
-      <div class="badge">初期リスク 0.65%</div>
-      <div class="badge">iPhone対応</div>
-      <div class="badge">GitHub Pages用</div>
+      <div class="badge">EURUSD / USDJPY</div>
+      <div class="badge">2分割 50% + 50%</div>
+      <div class="badge">複利対応</div>
+      <div class="badge">1pip価値 自動計算</div>
     </div>
   </div>
 
   <div class="card">
     <h2>入力</h2>
+
     <div class="seg">
       <button id="btnEUR" class="active" type="button" onclick="setPair('EURUSD')">EURUSD</button>
       <button id="btnJPY" type="button" onclick="setPair('USDJPY')">USDJPY</button>
@@ -109,10 +120,16 @@
       </div>
     </div>
 
+    <div class="quick2">
+      <button type="button" onclick="setRisk(0.30)">0.30%</button>
+      <button type="button" onclick="setRisk(0.50)">0.50%</button>
+      <button type="button" onclick="setRisk(0.65)">0.65%</button>
+    </div>
+
     <div class="grid2">
-      <div>
-        <label>1lotあたり1pip価値（円）</label>
-        <input id="pipValue" type="number" value="63" step="0.1" inputmode="decimal">
+      <div id="usdjpyRateWrap">
+        <label>USDJPY現在値（EURUSD計算用）</label>
+        <input id="usdjpyRate" type="number" value="150" step="0.01" inputmode="decimal">
       </div>
       <div>
         <label>ロット刻み</label>
@@ -123,8 +140,24 @@
       </div>
     </div>
 
+    <div class="grid3">
+      <div>
+        <label>1lotあたり1pip価値（円）</label>
+        <input id="pipValueYen" type="text" value="-" readonly>
+      </div>
+      <div>
+        <label>1本目</label>
+        <input id="firstLot" type="text" value="-" readonly>
+      </div>
+      <div>
+        <label>2本目</label>
+        <input id="secondLot" type="text" value="-" readonly>
+      </div>
+    </div>
+
     <div class="muted">
-      通常は初期値のままで使えます。EURUSD=63円、USDJPY=100円。
+      <span class="pill">自動計算</span>
+      USDJPYは 1lot = 1,000円/pip。EURUSDは 1lot = 10USD/pip をドル円で円換算します。
     </div>
 
     <button class="btn" onclick="calc()">計算する</button>
@@ -151,21 +184,19 @@
   </div>
 
   <div class="card">
+    <h2>計算根拠</h2>
+    <div id="logicText" class="muted"></div>
+  </div>
+
+  <div class="card">
     <h2>使い方</h2>
     <div class="muted">
       1. 通貨を選ぶ<br>
       2. 口座資金を入れる<br>
       3. リスク率を確認する<br>
       4. SL幅を入れる<br>
-      5. 合計lotと1本目・2本目を確認する
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>1pip価値について</h2>
-    <div class="muted">
-      計算式は <b>必要lot = 口座資金 × リスク率 ÷ (SL幅 × 1pip価値)</b> です。<br>
-      そのため1pip価値は必要です。通常は EURUSD=63円、USDJPY=100円 の固定値で十分です。
+      5. EURUSDならUSDJPY現在値も入れる<br>
+      6. 合計lotと1本目・2本目をそのまま使う
     </div>
   </div>
 </div>
@@ -177,11 +208,15 @@ function setPair(pair){
   currentPair=pair;
   document.getElementById('btnEUR').classList.toggle('active', pair==='EURUSD');
   document.getElementById('btnJPY').classList.toggle('active', pair==='USDJPY');
-  document.getElementById('pipValue').value = pair==='EURUSD' ? 63 : 100;
+  document.getElementById('usdjpyRateWrap').classList.toggle('hidden', pair==='USDJPY');
   calc();
 }
 function setBalance(v){
   document.getElementById('balance').value = v;
+  calc();
+}
+function setRisk(v){
+  document.getElementById('riskPct').value = v.toFixed(2);
   calc();
 }
 function safeNumber(id){
@@ -194,32 +229,45 @@ function fmtLot(value, step){
   const digits = step === 0.001 ? 3 : 2;
   return Number(value).toFixed(digits);
 }
-function calcBandLot(balance, riskPct, pips, pipValue, step){
+function calcPipValueYen(pair, usdjpy){
+  if(pair === 'USDJPY'){
+    return 1000.0; // 1 lot = 100,000 units, 1 pip = 0.01 JPY => 100,000 * 0.01
+  }else{
+    return 10.0 * usdjpy; // 1 lot EURUSD = 10 USD per pip, convert via USDJPY
+  }
+}
+function calcBandLot(balance, riskPct, pips, pipValueYen, step){
   const riskYen = balance * (riskPct / 100);
-  const rawLot = riskYen / (pips * pipValue);
+  const rawLot = riskYen / (pips * pipValueYen);
   return roundDown(rawLot, step);
 }
 function calc(){
   const balance = safeNumber('balance');
   const riskPct = safeNumber('riskPct');
   const slPips = safeNumber('slPips');
-  const pipValue = safeNumber('pipValue');
+  const usdjpy = safeNumber('usdjpyRate');
   const step = safeNumber('lotStep');
 
-  if(balance<=0 || riskPct<=0 || slPips<=0 || pipValue<=0){
+  if(balance<=0 || riskPct<=0 || slPips<=0 || step<=0 || (currentPair==='EURUSD' && usdjpy<=0)){
     document.getElementById('mainResult').textContent='入力値を確認してください';
     document.getElementById('subResult').textContent='';
     document.getElementById('judgeText').textContent='';
     document.getElementById('bandBody').innerHTML='';
+    document.getElementById('logicText').innerHTML='';
     return;
   }
 
+  const pipValueYen = calcPipValueYen(currentPair, usdjpy);
   const riskYen = balance * (riskPct / 100);
-  const rawLot = riskYen / (slPips * pipValue);
+  const rawLot = riskYen / (slPips * pipValueYen);
   const safeLot = roundDown(rawLot, step);
   const halfLot = safeLot / 2;
-  const actualLoss = safeLot * slPips * pipValue;
+  const actualLoss = safeLot * slPips * pipValueYen;
   const actualRiskPct = (actualLoss / balance) * 100;
+
+  document.getElementById('pipValueYen').value = pipValueYen.toLocaleString('ja-JP', {maximumFractionDigits: 2});
+  document.getElementById('firstLot').value = fmtLot(halfLot, step);
+  document.getElementById('secondLot').value = fmtLot(halfLot, step);
 
   document.getElementById('mainResult').innerHTML = '合計 ' + fmtLot(safeLot, step) + ' lot';
   document.getElementById('subResult').innerHTML =
@@ -228,7 +276,22 @@ function calc(){
 
   document.getElementById('judgeText').innerHTML =
     (actualRiskPct <= riskPct ? '<span class="ok">安全側に丸めています。</span>' : 'リスク超過です。') +
-    ' 計算式: ' + balance.toLocaleString('ja-JP') + ' × ' + riskPct + '% ÷ (' + slPips + ' × ' + pipValue + ')';
+    ' 計算式: ' + balance.toLocaleString('ja-JP') + ' × ' + riskPct + '% ÷ (' + slPips + ' × ' + pipValueYen.toLocaleString('ja-JP', {maximumFractionDigits:2}) + ')';
+
+  let logic = '';
+  if(currentPair === 'USDJPY'){
+    logic =
+      '<b>USDJPY</b><br>' +
+      '1lot = 100,000通貨、1pip = 0.01円<br>' +
+      'したがって 100,000 × 0.01 = <b>1,000円/pip</b>';
+  }else{
+    logic =
+      '<b>EURUSD</b><br>' +
+      '1lot = 100,000通貨、1pip = 0.0001USD<br>' +
+      'したがって 100,000 × 0.0001 = <b>10USD/pip</b><br>' +
+      'これを USDJPY ' + usdjpy.toFixed(2) + ' 円で換算 → <b>' + pipValueYen.toLocaleString('ja-JP', {maximumFractionDigits:2}) + '円/pip</b>';
+  }
+  document.getElementById('logicText').innerHTML = logic;
 
   const bands = [
     ['5〜6',5.5], ['7〜8',7.5], ['9〜10',9.5], ['11〜14',12.5],
@@ -236,7 +299,7 @@ function calc(){
   ];
   let html = '';
   for(const [label, avgPips] of bands){
-    const lot = calcBandLot(balance, riskPct, avgPips, pipValue, step);
+    const lot = calcBandLot(balance, riskPct, avgPips, pipValueYen, step);
     const half = lot / 2;
     html += `<tr>
       <td>${label} pips</td>
@@ -247,7 +310,7 @@ function calc(){
   }
   document.getElementById('bandBody').innerHTML = html;
 }
-['balance','riskPct','slPips','pipValue','lotStep'].forEach(id=>{
+['balance','riskPct','slPips','usdjpyRate','lotStep'].forEach(id=>{
   document.getElementById(id).addEventListener('input', calc);
   document.getElementById(id).addEventListener('change', calc);
 });
